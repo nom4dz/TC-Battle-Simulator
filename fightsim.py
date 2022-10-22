@@ -176,8 +176,10 @@ def simulate(DMG1, HIT1, HP2, CR1, A2, N):
     damage2 = np.array(damage2)
     
     #account for precision error, pvalues of multinomial should sum to 1
-    y = np.append(y, 1 - sum(y))
-    damage2 = np.append(damage2, 0)
+    #y = np.append(y, 1 - sum(y))
+    #damage2 = np.append(damage2, 0)
+    if sum(y) > 1:
+        y[-1] = y[-1] - (sum(y) - 1)    
     damage2 = DMG1*damage2 #Multiply by dmg P1 deals to arms/legs
     #Generate a multinomial for each turn
     z = np.transpose(np.nonzero(np.random.multinomial(1,y, (N,22))))
