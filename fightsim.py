@@ -200,7 +200,7 @@ y0 = y == 0
 #Count number of fights where both survive
 z = np.logical_and(x0, y0)
 draws = sum(z)
-drawp = draws/N
+drawp = 100*draws/N
 
 
 x[np.where(x == 0)[0]] = 30
@@ -209,10 +209,10 @@ y[np.where(y == 0)[0]] = 31
 #count wins
 zw = x <= y #Fights where P2 dies on same turn or earlier than P1
 wins = sum(zw) - draws
-winp = wins/N
+winp = 100*wins/N
 #count losses
 losses = N - wins - draws
-lossp = losses/N
+lossp = 100*losses/N
 
 print("Wins: " + str(wins) + " (" + str(winp) +  "%)\nDraws: "+str(draws) + " (" + str(drawp) + 
                      "%)\nLosses: " + str(losses) + " (" + str(lossp) + "%)" )
