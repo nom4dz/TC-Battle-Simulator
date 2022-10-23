@@ -1,12 +1,17 @@
 import numpy as np
 import math
 import time
+import armor
 start = time.time()
-#Bonuses to include: puncture, assassinate, focus, deadeye, weaken, cupid, achilles
-#RW armor: Dune, Assault, EOD
+#Rifle bonuses to include: puncture, assassinate, focus, deadeye, weaken
+
+############
+############
+
+#Set parameters
 N = 10000 #Number of simulations
-idmg1 = 0 # %Damage increase 
-idmg2 = 0 
+idmg1 = 23 # %Damage increase 
+idmg2 = 23 
 ap1 = 0 # %Armor penetration of P1
 ap2 = 0 
 cr1 = 25 # %Critical hit
@@ -25,6 +30,17 @@ str2 = 10**9
 def2 = 10**9
 spd2 = 10**9
 dex2 = 10**9
+
+#Armor of P1 (helmet, body, gloves, pants, boots)
+a1 = armor.Coverage(armor.moto_helmet(31), armor.fba(44), armor.combat_gloves(40),
+           armor.combat_pants(40), armor.combat_boots(40), ap2) 
+#Armor of P2
+a2 = armor.Coverage(armor.moto_helmet(31), armor.fba(44), armor.combat_gloves(40),
+           armor.combat_pants(40), armor.combat_boots(40), ap1) 
+
+############
+############
+
 def dmg(STR): #dmg dealt to arms/legs
     return (7 * (math.log10(STR/10))**2 + 27 * math.log10(STR/10) + 30)/3.5
 
@@ -60,82 +76,6 @@ dmg1 = (1 + idmg1/100)*dmg(str1)*wdmg1/10*(1 - defm(str1,def2)/100) #Damage deal
 dmg2 = (1 + idmg2/100)*dmg(str2)*wdmg2/10*(1 - defm(str2,def1)/100)
 hit1 = fHC(hit_chance(spd1, dex2), acc1) #Hit chance of P1 after weapon acc modifier
 hit2 = fHC(hit_chance(spd2, dex1), acc2)
-
-#(Head, Throat, Heart, Chest, Stomach, Groin, Arm, Hand, Leg, Foot)
-fba = [0, 0, 100, 95.73, 96.57, 11.88, 36.16, 0, 0.51, 0]
-combat_pants = [0, 0, 0, 0, 7.62, 100, 0, 0, 100, 16.28]
-combat_gloves = [0, 0, 0, 0, 0, 0, 0.32, 100, 0, 0]
-combat_boots = [0, 0, 0, 0, 0, 0, 0, 0, 7.92, 100]
-moto_helm = [85.35, 23.19, 0, 0, 0, 0, 0, 0, 0, 0]
-welding_helm = [100, 49.53, 0, 0, 0, 0, 0, 0, 0, 0]
-delta_mask = [27.13, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-delta_body = [0, 88.81, 100, 100, 100, 13.4, 100, 30.7, 0.64, 0]
-delta_pants = [0, 0, 0, 0, 8.59, 100, 0, 0, 100, 29.06]
-delta_gloves = [0, 0, 0, 0, 0, 0, 0.5, 100, 0, 0]
-delta_boots = [0, 0, 0, 0, 0, 0, 0, 0, 10.25, 100]
-riot_helm = [99.61, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-riot_body = [0, 79.06, 100, 100, 100, 99.9, 100, 21.6, 3.01, 0]
-riot_pants = [0, 0, 0, 0, 2.12, 100, 0, 0, 100, 39.96]
-riot_gloves = [0, 0, 0, 0, 0, 0, 0.78, 100, 0, 0]
-riot_boots = [0, 0, 0, 0, 0, 0, 0, 0, 11.62, 100]
-
-#armor coverage and mitigation of each body part
-def armor(helmet: tuple, h: int , 
-          body: tuple, by: int , 
-          gloves: tuple, g: int , 
-          pants: tuple, p: int , 
-          boots: tuple, bs: int, AP2 ): 
-    a = np.array([helmet, body, gloves, pants, boots]) #coverage of each body part
-    a_value = [h, by, g, p, bs] #armor mitigation
-    a_value = np.array(a_value)*(1 - AP2/100) #Armor mitigation after penetration
-    a_value = a_value.tolist()
-    x = []
-    for i in range(10):        
-        if np.nonzero(a[:,i])[0].size == 1: #when body part is covered by 1 piece of armor
-            c1 = a[np.nonzero(a[:,i]),i][0][0]
-            a1 = a_value[np.nonzero(a[:,i])[0][0]]
-            if c1 == 100:
-                x.append([[c1,], [a1,]])
-            else:
-                x.append([[c1, 100 - c1], [a1, 0]])
-        elif np.nonzero(a[:,i])[0].size == 2: #when body part is covered by 2 pieces of armor
-            c1 = a[np.nonzero(a[:,i]),i][0][0]
-            c2 = a[np.nonzero(a[:,i]),i][0][1]
-            a1 = a_value[np.nonzero(a[:,i])[0][0]]
-            a2 = a_value[np.nonzero(a[:,i])[0][1]]
-            c3 = [c1, c2]
-            a3 = [a1, a2]
-            maxarg = np.argmax(a3)
-            minarg = 1 - maxarg
-            if c3[maxarg] + c3[minarg] < 100:
-                x.append([[c3[maxarg], c3[minarg], 100 - c3[maxarg] - c3[minarg]],[a3[maxarg], a3[minarg], 0]])
-            elif c3[maxarg] < 100:
-                x.append([[c3[maxarg], 100 - c3[maxarg]],[a3[maxarg], a3[minarg]]])
-            else:
-                x.append([[c3[maxarg],],[a3[maxarg],]])
-        elif np.nonzero(a[:,i])[0].size == 3: #when body part is covered by 3 pieces of armor
-            c1 = a[np.nonzero(a[:,i]),i][0][0]
-            c2 = a[np.nonzero(a[:,i]),i][0][1]
-            c3 = a[np.nonzero(a[:,i]),i][0][2]
-            a1 = a_value[np.nonzero(a[:,i])[0][0]]
-            a2 = a_value[np.nonzero(a[:,i])[0][1]]
-            a3 = a_value[np.nonzero(a[:,i])[0][2]]
-            if a_value[3] >= a_value[4] and a_value[3] >= a_value[1]:
-                x.append([[c2,], [a2,]])
-            elif a_value[3] < a_value[4] and a_value[3] >= a_value[1]:
-                x.append([[c3,c2 - c3], [a3,a2]])
-            elif a_value[3] >= a_value[4] and a_value[3] < a_value[1]:
-                x.append([[c1,c2 - c1], [a1,a2]])
-            else:
-                x.append([[c3, c1, c2 - c1 - c3], [a3, a1, a2]])                
-        else:
-            x.append([[100, 0]])
-    return x
-
-#Armor coverage of P1
-a1 = armor(moto_helm, 31, fba, 44,  combat_gloves, 40, combat_pants, 40, combat_boots, 40, ap2) 
-#Armor coverage of P2
-a2 = armor(moto_helm, 31, fba, 44,  combat_gloves, 40, combat_pants, 40, combat_boots, 40, ap1) 
 
 def simulate(DMG1, HIT1, HP2, CR1, A2, N):    
     x = A2
@@ -176,8 +116,6 @@ def simulate(DMG1, HIT1, HP2, CR1, A2, N):
     damage2 = np.array(damage2)
     
     #account for precision error, pvalues of multinomial should sum to 1
-    #y = np.append(y, 1 - sum(y))
-    #damage2 = np.append(damage2, 0)
     if sum(y) > 1:
         y[-1] = y[-1] - (sum(y) - 1)    
     damage2 = DMG1*damage2 #Multiply by dmg P1 deals to arms/legs
