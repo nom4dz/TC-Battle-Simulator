@@ -3,10 +3,11 @@ import math
 import time
 import armor
 start = time.time()
-#Rifle bonuses to include: puncture, assassinate, focus, deadeye, weaken
-
-############
-############
+class Weapon:
+    def __init__(self, dmg, acc, assassinate = 0, deadeye = 0):
+        self.dmg = dmg
+        self.acc = acc
+        self.RW = np.array([assassinate, deadeye,])
 
 #Set parameters
 N = 10000 #Number of simulations
@@ -16,10 +17,6 @@ ap1 = 0 # %Armor penetration of P1
 ap2 = 0 
 cr1 = 25 # %Critical hit
 cr2 = 25
-wdmg1 = 70 #Weapon damage
-wdmg2 = 70
-acc1 = 60 #Weapon accuracy
-acc2 = 60
 hp1 = 7500
 hp2 = 7500
 str1 = 10**9
@@ -30,10 +27,14 @@ str2 = 10**9
 def2 = 10**9
 spd2 = 10**9
 dex2 = 10**9
-
+#Weapon of P1
+w1 = Weapon(dmg = 70, acc = 60, assassinate = 0, deadeye = 0)
 #Armor of P1 (helmet, body, gloves, pants, boots)
 a1 = armor.Coverage(armor.moto_helmet(31), armor.fba(44), armor.combat_gloves(40),
            armor.combat_pants(40), armor.combat_boots(40), ap2) 
+
+#Weapon of P2
+w2 = Weapon(dmg = 70, acc = 60, assassinate = 0, deadeye = 0)
 #Armor of P2
 a2 = armor.Coverage(armor.moto_helmet(31), armor.fba(44), armor.combat_gloves(40),
            armor.combat_pants(40), armor.combat_boots(40), ap1) 
@@ -72,12 +73,12 @@ def fHC(bHC, acc): #final hit chance
     else:
         return bHC + ((acc-50)/50)*bHC
 
-dmg1 = (1 + idmg1/100)*dmg(str1)*wdmg1/10*(1 - defm(str1,def2)/100) #Damage dealt by P1 to P2 on arms/legs
-dmg2 = (1 + idmg2/100)*dmg(str2)*wdmg2/10*(1 - defm(str2,def1)/100)
-hit1 = fHC(hit_chance(spd1, dex2), acc1) #Hit chance of P1 after weapon acc modifier
-hit2 = fHC(hit_chance(spd2, dex1), acc2)
+dmg1 = (1 + idmg1/100)*dmg(str1)*w1.dmg/10*(1 - defm(str1,def2)/100) #Damage dealt by P1 to P2 on arms/legs
+dmg2 = (1 + idmg2/100)*dmg(str2)*w2.dmg/10*(1 - defm(str2,def1)/100)
+hit1 = fHC(hit_chance(spd1, dex2), w1.acc) #Hit chance of P1 after weapon acc modifier
+hit2 = fHC(hit_chance(spd2, dex1), w2.acc)
 
-def simulate(DMG1, HIT1, HP2, CR1, A2, N):    
+def simulate(W1, DMG1, HIT1, HP2, CR1, A2, N):    
     x = A2
     CR1 = CR1/100
     NCR = 1 - CR1
@@ -87,7 +88,9 @@ def simulate(DMG1, HIT1, HP2, CR1, A2, N):
     hit = hitc*np.array([0.8*CR1, 0.1*CR1, 0.1*CR1, 0.25*NCR, 0.2*NCR, 0.05*NCR, 0.1*NCR, 0.1*NCR, 0.2*NCR, 0.1*NCR])
     #Chance of missing each body part
     miss = missc*np.array([0.8*CR1, 0.1*CR1, 0.1*CR1, 0.25*NCR, 0.2*NCR, 0.05*NCR, 0.1*NCR, 0.1*NCR, 0.2*NCR, 0.1*NCR])
-    multi = [3.5, 3.5, 3.5, 2, 2, 2, 1, 0.7, 1, 0.7]
+    multi = np.array([3.5, 3.5, 3.5, 2, 2, 2, 1, 0.7, 1, 0.7])
+    if W1.RW[1] > 0: #Deadeye bonus
+        multi[0:3] = multi[0:3]*(1 + (idmg1+w1.RW[1])/100)/(1 + idmg1/100)
     for i in range(10):
         x[i][0] = np.array(x[i][0])*hit[i]/100 #Multiply armor coverage by the chance of hitting the armor
         x[i][0] = np.append(x[i][0],miss[i]) #Multiply armor coverage by the chance of missing the armor
@@ -123,14 +126,16 @@ def simulate(DMG1, HIT1, HP2, CR1, A2, N):
     z = np.transpose(np.nonzero(np.random.multinomial(1,y, (N,22))))
     damage3 = np.take(damage2, tuple(z[:,2]))
     d4 = damage3.reshape((N,22)) #Damage dealt on each turn
+    if W1.RW[0] > 0: #Assassinate bonus
+        d4[:,0] = d4[:,0]*(1 + (idmg1+w1.RW[0])/100)/(1 + idmg1/100)
     c = np.cumsum(d4, axis = 1) #Cumulative sum of damage dealt 
     d = c >= HP2 
     d1 = np.argmax(d, axis = 1) #Find the turn where sum of damage dealt is greater than hp of P2
     return d1
 #create length N array, each element is the turn that P2 dies, or 0 if P2 survives
-x = simulate(dmg1, hit1, hp2, cr1, a2, N) 
+x = simulate(w1, dmg1, hit1, hp2, cr1, a2, N) 
 #create length N array, each element is the turn that P1 dies, or 0 if P1 survives
-y = simulate(dmg2, hit2, hp1, cr2, a1, N) 
+y = simulate(w2, dmg2, hit2, hp1, cr2, a1, N) 
 
 ##count draws
 #Find all fights where P2 survives
